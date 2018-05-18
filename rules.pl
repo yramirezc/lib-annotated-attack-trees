@@ -18,6 +18,7 @@ runsOn([microsoft,windows_media_player],[microsoft,windows]).
 runsOn([apple,itunes],[apple,mac_os]).
 
 envPropertyAlsoMatches(CVE,X) :- envPropertyMatches(CVE,Y), runsOn(Z,X), isSubdescription(Z,Y).
+isSubdescription([X|T],[X,T]) :- !.
 isSubdescription([X|T],[X|T1]) :- isSubdescr(T,T1).
 isSubdescr([X],[X|_]).
 
