@@ -1,3 +1,7 @@
+/**
+ * Automatically generated guarantee-related facts
+ */
+
 allowedAction(cve_2017_0001,[[local,user],gain,[privilege]]).
 allowedAction(cve_2017_0001,[[local,user],gain,[windows,gdi,vulnerability,elevation,privilege]]).
 allowedAction(cve_2017_0002,[[attacker,remote],bypass,[policy,origin,same]]).
