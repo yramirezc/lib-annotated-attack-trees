@@ -1,5 +1,5 @@
-:- [guaranteesKb].
-:- [assumptionsKb].
+:- [guaranteesKbAuto].
+:- [assumptionsKbAuto].
 
 /**
  * Manually defined rules relating to guarantees
