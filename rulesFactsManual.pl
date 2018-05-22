@@ -7,9 +7,9 @@
 
 attachable(CVE,A,G) :- nonContradictory(CVE,A), guaranteesSome(CVE,G).
 nonContradictory(_,acceptAll) :- !.
-nonContradictory(CVE,[A1|_]) :- envPropertyMatches(CVE,X), isSubdescription(A1,X).
+nonContradictory(CVE,[A1|_]) :- envPropertyMatches(CVE,X), isSubdescription(A1,X);
+                                envPropertyAlsoMatches(CVE,X), isSubdescription(A1,X).
 nonContradictory(CVE,[_|RA]) :- nonContradictory(CVE,RA).
-nonContradictory(CVE,A) :- envPropertyAlsoMatches(CVE,X), member(Y,A), isSubdescription(Y,X).
 guaranteesSome(CVE,G) :- member(X,G), guaranteed(CVE,X).
 
 /**
@@ -40,7 +40,7 @@ productSimultaneouslyAllowing(A1,A2,Inter) :- setof(X,productAllowingAction(X,A1
 countAttachable(A,G,L) :- setof(X,attachable(X,A,G),S), length(S,L).
 
 /**
- * Manually defined facts relating to assumptions (for the moment, this is here only to serve as an example)
+ * Manually defined facts relating to assumptions (for the moment, this is here only to serve as an example of what can be added in a real-world setting)
  */
 
 runsOn([microsoft,word],[microsoft,windows]).
