@@ -1,0 +1,18 @@
+("acceptNothing","noGuarantees",OR(
+	("acceptNothing","noGuarantees",OR(
+		("[[cisco]]","[guaranteed(CVE,[[remote,attacker],overwrite,[arbitrary,file]])]",b1)
+		)
+	),
+	("acceptNothing","noGuarantees",AND(
+		(OR(
+			("[[cisco]]","[guaranteed(CVE,[[remote,attacker],overwrite,[arbitrary,file]])]",b2)
+			)
+		),
+		(OR(
+			("[[cisco]]","[guaranteed(CVE,[[remote,attacker],execute,[arbitrary,command]])]",b3)
+			)
+		)
+		)
+	)
+	)
+)
