@@ -1,3 +1,7 @@
+# Implements the class TupleExtractor which automatically extracts the set of assumption and guarantee facts 
+# from (a subset of) the NVD  
+
+import sys
 import os
 from handler_json_nvd import HandlerCVEJson
 import re
@@ -96,5 +100,10 @@ class TupleExtractor:
                 return True
         return False
         
-        
+# argv[2]: NVD folder
+# argv[3]: parser output folder
+# argv[4]: stopwords
+
+extractor = TupleExtractor(sys.argv[2], sys.argv[3], sys.argv[4], range(2013,2018))
+extractor.do_extraction()
 
