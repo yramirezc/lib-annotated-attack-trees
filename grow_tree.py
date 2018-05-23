@@ -30,36 +30,48 @@ class AnnotatedAttackTreeParser:
                     if self.tokens[self.nextTok][0] == '"' and self.tokens[self.nextTok][-1] == '"':
                         guarantees = self.tokens[self.nextTok].strip('"')
                         self.nextTok += 1
-                        if self.tokens[self.nextTok].lower() == 'or':
+                        if self.tokens[self.nextTok] == ',':
                             self.nextTok += 1
-                            if self.tokens[self.nextTok] == '(':
+                            if self.tokens[self.nextTok].lower() == 'or':
                                 self.nextTok += 1
-                                children = self.parse_subtrees()
-                                if self.tokens[self.nextTok] == ')':
+                                if self.tokens[self.nextTok] == '(':
                                     self.nextTok += 1
-                                    return {"assumptions" : assumptions, "guarantees" : guarantees, "type" : "or", "children" : children}
+                                    children = self.parse_subtrees()
+                                    if self.tokens[self.nextTok] == ')':
+                                        self.nextTok += 1
+                                        if self.tokens[self.nextTok] == ')':
+                                            self.nextTok += 1
+                                            return {"assumptions" : assumptions, "guarantees" : guarantees, "type" : "or", "children" : children}
+                                        else:
+                                            raise 'Syntax error'
+                                    else:
+                                        raise 'Syntax error'
                                 else:
                                     raise 'Syntax error'
-                            else:
-                                raise 'Syntax error'
-                        elif self.tokens[self.nextTok].lower() == 'and':
-                            self.nextTok += 1
-                            if self.tokens[self.nextTok] == '(':
+                            elif self.tokens[self.nextTok].lower() == 'and':
                                 self.nextTok += 1
-                                children = self.parse_subtrees()
-                                if self.tokens[self.nextTok] == ')':
+                                if self.tokens[self.nextTok] == '(':
                                     self.nextTok += 1
-                                    return {"assumptions" : assumptions, "guarantees" : guarantees, "type" : "and", "children" : children}
+                                    children = self.parse_subtrees()
+                                    if self.tokens[self.nextTok] == ')':
+                                        self.nextTok += 1
+                                        if self.tokens[self.nextTok] == ')':
+                                            self.nextTok += 1
+                                            return {"assumptions" : assumptions, "guarantees" : guarantees, "type" : "and", "children" : children}
+                                        else:
+                                            raise 'Syntax error'
+                                    else:
+                                        raise 'Syntax error'
                                 else:
                                     raise 'Syntax error'
-                            else:
-                                raise 'Syntax error'
-                        elif self.found_basic_action():
-                            label = self.tokens[self.nextTok]
-                            self.nextTok += 1
-                            if self.tokens[self.nextTok] == ')':
+                            elif self.found_basic_action():
+                                label = self.tokens[self.nextTok]
                                 self.nextTok += 1
-                                return {"assumptions" : assumptions, "guarantees" : guarantees, "type" : "leaf", "label" : label,  "children" : []}
+                                if self.tokens[self.nextTok] == ')':
+                                    self.nextTok += 1
+                                    return {"assumptions" : assumptions, "guarantees" : guarantees, "type" : "leaf", "label" : label,  "children" : []}
+                                else:
+                                    raise 'Syntax error'
                             else:
                                 raise 'Syntax error'
                         else:
@@ -74,7 +86,7 @@ class AnnotatedAttackTreeParser:
             raise 'Syntax error'
     
     def parse_subtrees(self):
-        if self.tokens[self.nextTok].lower() == 'or' or self.tokens[self.nextTok].lower() == 'and' or self.tokens[self.nextTok].lower() == '(':
+        if self.tokens[self.nextTok].lower() == '(':
             return [self.parse()] + self.parse_remaining_subtrees()
         else:
             raise 'Syntax error'
@@ -82,7 +94,7 @@ class AnnotatedAttackTreeParser:
     def parse_remaining_subtrees(self):
         if self.tokens[self.nextTok] == ',':
             self.nextTok += 1
-            if self.tokens[self.nextTok].lower() == 'or' or self.tokens[self.nextTok].lower() == 'and' or self.tokens[self.nextTok].lower() == '(':
+            if self.tokens[self.nextTok].lower() == '(':
                 return [self.parse()] + self.parse_remaining_subtrees()
             else:
                 raise 'Syntax error'
@@ -199,25 +211,26 @@ if len(sys.argv) == 7:
 #     for qres in qresults:
 #         if 'X' in qres:
 #             print 'Query result: ' + str(qres['X'])
-#     
+#      
 #     # Test 2: querying for a list of alphanumericals
 #     qresults = prolog_interface.query('attachable(CVE,[[cisco]],[[[remote,attacker],execute,[arbitrary,command]]])')
 #     attachable_cves = set(qres['CVE'] for qres in qresults) 
 #     print 'Query result: ' + ', '.join(attachable_cves)
     
     cves = (' '.join(ln.strip() for ln in open(sys.argv[2], 'rt').readlines())).split()
-    
+     
     lns = open(sys.argv[1], 'rt').readlines()
     outf = open(sys.argv[3], 'wt')
-    
+     
     for ln in lns:
         atree = AnnotatedAttackTreeParser().get_tree(ln.strip())
         if atree is not None:
+            print aatree_as_str(atree)
             for cve in cves:
                 refine(atree, cve)
             consolidate_enriched_tree(atree)
-            outf.write(aatree_as_str(atree))
-    
+            outf.write(aatree_as_str(atree)) 
+     
     outf.close()
     
 
