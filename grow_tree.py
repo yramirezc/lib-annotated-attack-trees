@@ -2,6 +2,9 @@
 
 import sys
 import re
+from pyswip import Prolog
+
+prolog_interface = Prolog()   # Creating the prolog interface. It still has no knowledge.
 
 class AnnotatedAttackTreeParser:
     
@@ -121,8 +124,12 @@ def refine(atree, cve):
     return added
 
 def evaluate_attachable_predicate(assumptions, guarantees, cve):
-    # TODO: Pipeline with SWI Prolog to query for the attachable predicate as defined in rulesFactsManual.pl
-    return [False, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]
+    query_results = prolog_interface.query('attachable(CVE,' + assumptions + ',' + guarantees +')')
+    attachable_cves = set(qres['CVE'] for qres in query_results)
+    if cve in attachable_cves:
+        return [True, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]. To be completed
+    else:
+        return [False, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]
 
 def consolidate_enriched_tree(atree):
     if atree['type'] in ['or', 'and']:
@@ -142,23 +149,75 @@ def aatree_as_str(atree):
     else:   # atree['type'] == 'and':
         return '("' + atree['assumptions'] + '","' + atree['guarantees'] + '",AND(' + ','.join(aatree_as_str(child) for child in atree['children']) + '))'
 
-# sys.args[1]: File containing annotated attack trees, one per line
-# sys.args[2]: File containing list of CVEs
-# sys.args[3]: Output file
+# sys.argv[1]: File containing annotated attack trees, one per line
+# sys.argv[2]: File containing list of CVEs in use
+# sys.argv[3]: Path of the file assumptionsKbAuto.pl
+# sys.argv[4]: Path of the file guaranteesKbAuto.pl
+# sys.argv[5]: Path of the file rulesFactsManual.pl 
+# sys.argv[6]: Output file
 
-cves = ' '.join(ln.strip() for ln in open(sys.argv[2], 'rt').readlines()).split()
-
-lns = open(sys.argv[1], 'rt').readlines()
-outf = open(sys.argv[3], 'wt')
-
-for ln in lns:
-    atree = AnnotatedAttackTreeParser().get_tree(ln.strip())
-    if atree is not None:
-        for cve in cves:
-            refine(atree, cve)
-        consolidate_enriched_tree(atree)
-        outf.write(aatree_as_str(atree))
-
-outf.close()
+if len(sys.argv) == 7:
+    
+    # Load knowledge base. All facts and rules in assumptionsKbAuto.pl, guaranteesKbAuto.pl and rulesFactsManual.pl
+    # are read from the files and asserted into the working prolog_interface environment in run-time. This SHOULD NOT be necessary, 
+    # but the <consult> method provided in PySWIP is not behaving as described in the documentation: it seems to always
+    # fail to access the given file.    
+    
+    print 'Loading knowledge base'
+    
+    #prolog_interface.consult(sys.args[3])
+    #prolog_interface.consult("guaranteesKbAuto.pl")
+    #prolog_interface.consult("rulesFactsManual.pl")
+    
+    lns = open(sys.argv[3], 'rt').readlines()
+    for ln in lns:
+        sln = ln.strip()
+        if len(sln) > 0 and sln[-1] == '.':
+            slnnp = sln.strip('.')
+            prolog_interface.assertz(slnnp)
+            
+    lns = open(sys.argv[4], 'rt').readlines()
+    for ln in lns:
+        sln = ln.strip()
+        if len(sln) > 0 and sln[-1] == '.':
+            slnnp = sln.strip('.')
+            prolog_interface.assertz(slnnp)
+    
+    lns = open(sys.argv[5], 'rt').readlines()
+    for ln in lns:
+        sln = ln.strip()
+        if len(sln) > 0 and sln[-1] == '.' and ':- [' not in sln:
+            slnnp = sln.strip('.')
+            if ':-' in slnnp:
+                slnnp = '(' + slnnp + ')'
+            prolog_interface.assertz(slnnp)
+    
+    print 'Done loading'
+    
+#     # Test 1: querying for numbers
+#     qresults = prolog_interface.query('countAttachable([[cisco]],[[[remote,attacker],execute,[arbitrary,command]]],X)')
+#     for qres in qresults:
+#         if 'X' in qres:
+#             print 'Query result: ' + str(qres['X'])
+#     
+#     # Test 2: querying for a list of alphanumericals
+#     qresults = prolog_interface.query('attachable(CVE,[[cisco]],[[[remote,attacker],execute,[arbitrary,command]]])')
+#     attachable_cves = set(qres['CVE'] for qres in qresults) 
+#     print 'Query result: ' + ', '.join(attachable_cves)
+    
+    cves = (' '.join(ln.strip() for ln in open(sys.argv[2], 'rt').readlines())).split()
+    
+    lns = open(sys.argv[1], 'rt').readlines()
+    outf = open(sys.argv[3], 'wt')
+    
+    for ln in lns:
+        atree = AnnotatedAttackTreeParser().get_tree(ln.strip())
+        if atree is not None:
+            for cve in cves:
+                refine(atree, cve)
+            consolidate_enriched_tree(atree)
+            outf.write(aatree_as_str(atree))
+    
+    outf.close()
     
 
