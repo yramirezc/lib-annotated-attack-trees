@@ -100,10 +100,15 @@ class TupleExtractor:
                 return True
         return False
         
-# argv[2]: NVD folder
-# argv[3]: parser output folder
-# argv[4]: stopwords
+# argv[1]: NVD folder
+# argv[2]: parser output folder
+# argv[3]: stopwords
+# argv[4]...: years to consider from NVD data 
 
-extractor = TupleExtractor(sys.argv[2], sys.argv[3], sys.argv[4], range(2013,2018))
-extractor.do_extraction()
+if len(sys.argv) >= 5:
+    
+    years = list(int(yr) for yr in sys.argv[4 : len(sys.argv)])
+
+    extractor = TupleExtractor(sys.argv[1], sys.argv[2], sys.argv[3], years)
+    extractor.do_extraction()
 
