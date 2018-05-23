@@ -7,8 +7,7 @@
 
 attachable(CVE,A,G) :- nonContradictory(CVE,A), guaranteesSome(CVE,G).
 nonContradictory(_,acceptAll) :- !.
-nonContradictory(CVE,[A1|_]) :- envPropertyMatches(CVE,X), isSubdescription(A1,X);
-                                envPropertyAlsoMatches(CVE,X), isSubdescription(A1,X).
+nonContradictory(CVE,[A1|_]) :- envPropertyMatches(CVE,X), isSubdescription(A1,X); envPropertyAlsoMatches(CVE,X), isSubdescription(A1,X).
 nonContradictory(CVE,[_|RA]) :- nonContradictory(CVE,RA).
 guaranteesSome(CVE,G) :- member(X,G), guaranteed(CVE,X).
 
