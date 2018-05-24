@@ -1,4 +1,4 @@
-# Implements the class TupleExtractor which automatically extracts the set of assumption and guarantee facts 
+# Implements the class FactExtractor which automatically extracts the set of assumption and guarantee facts 
 # from (a subset of) the NVD  
 
 import sys
@@ -7,7 +7,7 @@ from handler_json_nvd import HandlerCVEJson
 import re
 from handler_stanford_corenlp_xml_output import HandlerStanfordCoreNLPOutputXML
 
-class TupleExtractor:
+class FactExtractor:
     
     def __init__(self, db_fldr, prs_fldr, stopwrd_fl, years):
         
@@ -22,17 +22,17 @@ class TupleExtractor:
         self.stopwords.add('')
             
     def do_extraction(self):
-        self.extract_affected_envs_facts()
+        self.extract_affected_platforms_facts()
         self.extract_allowed_actions_facts()
     
     
-    def extract_affected_envs_facts(self):
+    def extract_affected_platforms_facts(self):
         ant_fact_set_fl = open(os.path.join(self.work_folder, 'facts-assumptions.txt'), 'wt')
         for i in range(0, self.nvd_handler.countCVEDescr()):
             affect_info_items = self.nvd_handler.getAffectsInfo(i)
             affect_info_items_no_version = set((item[0], item[1]) for item in affect_info_items)
             if len(affect_info_items) >= 1 or len(affect_info_items_no_version) >= 1:
-                ant_fact_set_fl.write(self.nvd_handler.getID(i) + '|' + ' '.join('envPropertyMatches(' + ':'.join(item) + ')' for item in affect_info_items) + ' ' + ' '.join('envPropertyMatches(' + ':'.join(item) + ')' for item in affect_info_items_no_version) + '\n') 
+                ant_fact_set_fl.write(self.nvd_handler.getID(i) + '|' + ' '.join('affectedPlatform(' + ':'.join(item) + ')' for item in affect_info_items) + ' ' + ' '.join('affectedPlatform(' + ':'.join(item) + ')' for item in affect_info_items_no_version) + '\n') 
         ant_fact_set_fl.close()
     
         
@@ -109,6 +109,6 @@ if len(sys.argv) >= 5:
     
     years = list(int(yr) for yr in sys.argv[4 : len(sys.argv)])
 
-    extractor = TupleExtractor(sys.argv[1], sys.argv[2], sys.argv[3], years)
+    extractor = FactExtractor(sys.argv[1], sys.argv[2], sys.argv[3], years)
     extractor.do_extraction()
 

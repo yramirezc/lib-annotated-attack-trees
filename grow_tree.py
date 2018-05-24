@@ -136,10 +136,12 @@ def refine(atree, cve):
     return added
 
 def evaluate_attachable_predicate(assumptions, guarantees, cve):
-    query_results = prolog_interface.query('attachable(CVE,' + assumptions + ',' + guarantees +')')
-    attachable_cves = set(qres['CVE'] for qres in query_results)
-    if cve in attachable_cves:
-        return [True, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]. To be completed
+    if len(list(prolog_interface.query('attachable(' + cve + ',' + assumptions + ',' + guarantees +')'))) > 0:
+        allowed_actions_query_results = prolog_interface.query('allowedAction(' + cve + ',X)')
+        assumptions_new_subtree = '"[' + ','.join('allowedAction(' + cve + ',' + aact['X'] + ')' for aact in allowed_actions_query_results) + ']"'
+        affected_platforms_query_results = prolog_interface.query('affectedPlatform(' + cve + ',X)')
+        guarantees_new_subtree = '"[' + ','.join('affectedPlatform(' + cve + ',' + aplt['X'] + ')' for aplt in affected_platforms_query_results) + ']"'
+        return [True, assumptions_new_subtree, guarantees_new_subtree]   # [predicate response, assumptions new subtree, guarantees new subtree]. To be completed
     else:
         return [False, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]
 
@@ -207,20 +209,32 @@ if len(sys.argv) == 7:
     print 'Done loading'
     
 #     # Test 1: querying for numbers
-#     qresults = prolog_interface.query('countAttachable([[cisco]],[[[remote,attacker],execute,[arbitrary,command]]],X)')
+#     qresults = prolog_interface.query('countAttachable(assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]),X)')
 #     for qres in qresults:
 #         if 'X' in qres:
 #             print 'Query result: ' + str(qres['X'])
-#      
+#       
 #     # Test 2: querying for a list of alphanumericals
-#     qresults = prolog_interface.query('attachable(CVE,[[cisco]],[[[remote,attacker],execute,[arbitrary,command]]])')
+#     qresults = prolog_interface.query('attachable(CVE,assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]))')
 #     attachable_cves = set(qres['CVE'] for qres in qresults) 
 #     print 'Query result: ' + ', '.join(attachable_cves)
+#     
+#     # Test 3: querying for a true or false
+#     qresults = list(prolog_interface.query('attachable(cve_2017_9479,assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]))'))
+#     if len(qresults) == 0:
+#         print 'Query result: false'
+#     else:
+#         print 'Query result: true'
+#     qresults = list(prolog_interface.query('attachable(yunior,assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]))'))
+#     if len(qresults) == 0:
+#         print 'Query result: false'
+#     else:
+#         print 'Query result: true'
     
     cves = (' '.join(ln.strip() for ln in open(sys.argv[2], 'rt').readlines())).split()
      
     lns = open(sys.argv[1], 'rt').readlines()
-    outf = open(sys.argv[3], 'wt')
+    outf = open(sys.argv[6], 'wt')
      
     for ln in lns:
         atree = AnnotatedAttackTreeParser().get_tree(ln.strip())
