@@ -3,6 +3,7 @@
 import sys
 import re
 from pyswip import Prolog
+import os
 
 prolog_interface = Prolog()   # Creating the prolog interface. It still has no knowledge.
 
@@ -17,7 +18,7 @@ class AnnotatedAttackTreeParser:
         try:
             return self.parse()
         except:
-            return None 
+            return {} 
 
     def parse(self):
         if self.tokens[self.nextTok].lower() == '(':
@@ -120,7 +121,7 @@ def refine(atree, cve):
     elif atree['type'] == 'or':
         child_refined = False
         for child in atree['children']:
-            child_refined = child_refined or refine(child, cve)
+            child_refined = refine(child, cve) or child_refined
         if child_refined:
             added = True
         else:
@@ -136,14 +137,10 @@ def refine(atree, cve):
     return added
 
 def evaluate_attachable_predicate(assumptions, guarantees, cve):
-    if len(list(prolog_interface.query('attachable(' + cve + ',' + assumptions + ',' + guarantees +')'))) > 0:
-        allowed_actions_query_results = prolog_interface.query('allowedAction(' + cve + ',X)')
-        assumptions_new_subtree = '"[' + ','.join('allowedAction(' + cve + ',' + aact['X'] + ')' for aact in allowed_actions_query_results) + ']"'
-        affected_platforms_query_results = prolog_interface.query('affectedPlatform(' + cve + ',X)')
-        guarantees_new_subtree = '"[' + ','.join('affectedPlatform(' + cve + ',' + aplt['X'] + ')' for aplt in affected_platforms_query_results) + ']"'
-        return [True, assumptions_new_subtree, guarantees_new_subtree]   # [predicate response, assumptions new subtree, guarantees new subtree]. To be completed
+    if len(list(prolog_interface.query('attachable(' + cve + ',' + assumptions + ',' + guarantees +')'))) > 0:   # attachable evaluates to true
+        return [True, assumptions, guarantees]   # [predicate response, assumptions new subtree, guarantees new subtree]
     else:
-        return [False, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]
+        return [False, "", ""]   # [predicate response, assumptions new subtree, guarantees new subtree]. Leaving blank the new assumptions and guarantees is irrelevant because the tree will not be attached
 
 def consolidate_enriched_tree(atree):
     if atree['type'] in ['or', 'and']:
@@ -162,9 +159,20 @@ def aatree_as_str(atree):
         return '("' + atree['assumptions'] + '","' + atree['guarantees'] + '",OR(' + ','.join(aatree_as_str(child) for child in atree['children']) + '))'
     else:   # atree['type'] == 'and':
         return '("' + atree['assumptions'] + '","' + atree['guarantees'] + '",AND(' + ','.join(aatree_as_str(child) for child in atree['children']) + '))'
+    
+def unannotated_tree_as_str(atree):
+    if atree['type'] in ['leaf', 'newly_attached_leaf']:
+        if 'label' in atree:
+            return atree['label']
+        else:
+            return 'bx'
+    elif atree['type'] == 'or':
+        return 'OR(' + ', '.join(unannotated_tree_as_str(child) for child in atree['children']) + ')'
+    else:   # atree['type'] == 'and':
+        return 'AND(' + ', '.join(unannotated_tree_as_str(child) for child in atree['children']) + ')'
 
 # sys.argv[1]: File containing annotated attack trees, one per line
-# sys.argv[2]: File containing list of CVEs in use
+# sys.argv[2]: File containing list of CVEs in use. If no valid file is given, the KB will be queried for all referenced CVEs
 # sys.argv[3]: Path of the file assumptionsKbAuto.pl
 # sys.argv[4]: Path of the file guaranteesKbAuto.pl
 # sys.argv[5]: Path of the file rulesFactsManual.pl 
@@ -173,15 +181,14 @@ def aatree_as_str(atree):
 if len(sys.argv) == 7:
     
     # Load knowledge base. All facts and rules in assumptionsKbAuto.pl, guaranteesKbAuto.pl and rulesFactsManual.pl
-    # are read from the files and asserted into the working prolog_interface environment in run-time. This SHOULD NOT be necessary, 
+    # are read from the files and asserted into the working prolog_interface environment in run-time. This SHOULD NOT be necessary
+    # (prolog_interface.consult(sys.args[3]) should be sufficient), 
     # but the <consult> method provided in PySWIP is not behaving as described in the documentation: it seems to always
     # fail to access the given file.    
     
-    print 'Loading knowledge base'
+    print 'Loading knowledge base...'
     
     #prolog_interface.consult(sys.args[3])
-    #prolog_interface.consult("guaranteesKbAuto.pl")
-    #prolog_interface.consult("rulesFactsManual.pl")
     
     lns = open(sys.argv[3], 'rt').readlines()
     for ln in lns:
@@ -206,44 +213,37 @@ if len(sys.argv) == 7:
                 slnnp = '(' + slnnp + ')'
             prolog_interface.assertz(slnnp)
     
-    print 'Done loading'
+    print 'Done'
     
-#     # Test 1: querying for numbers
-#     qresults = prolog_interface.query('countAttachable(assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]),X)')
-#     for qres in qresults:
-#         if 'X' in qres:
-#             print 'Query result: ' + str(qres['X'])
-#       
-#     # Test 2: querying for a list of alphanumericals
-#     qresults = prolog_interface.query('attachable(CVE,assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]))')
-#     attachable_cves = set(qres['CVE'] for qres in qresults) 
-#     print 'Query result: ' + ', '.join(attachable_cves)
-#     
-#     # Test 3: querying for a true or false
-#     qresults = list(prolog_interface.query('attachable(cve_2017_9479,assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]))'))
-#     if len(qresults) == 0:
-#         print 'Query result: false'
-#     else:
-#         print 'Query result: true'
-#     qresults = list(prolog_interface.query('attachable(yunior,assumedPlatforms([[cisco]]),requiredActions([[[remote,attacker],execute,[arbitrary,command]]]))'))
-#     if len(qresults) == 0:
-#         print 'Query result: false'
-#     else:
-#         print 'Query result: true'
-    
-    cves = (' '.join(ln.strip() for ln in open(sys.argv[2], 'rt').readlines())).split()
+    if os.path.isfile(sys.argv[2]):
+        cves = (' '.join(ln.strip() for ln in open(sys.argv[2], 'rt').readlines())).split()
+    else:
+        # This is time-consuming, avoid if possible
+        cves = set(qres['X'] for qres in prolog_interface.query('affectedPlatform(X,_),allowedAction(X,_)'))
+        # For running the instruction above only once, take the file generated by the following code and give it as sys.argv[2]
+        fcveind = open(os.path.join(os.path.split(sys.argv[1])[0], 'list-queried-cves.txt'), 'wt')
+        fcveind.write('\n'.join(cves))
+        fcveind.close()
      
     lns = open(sys.argv[1], 'rt').readlines()
     outf = open(sys.argv[6], 'wt')
      
     for ln in lns:
+        print 'Read line   ' + ln.strip()
         atree = AnnotatedAttackTreeParser().get_tree(ln.strip())
-        if atree is not None:
-            print aatree_as_str(atree)
+        if atree != {}:
+            print 'Parsed tree ' + aatree_as_str(atree)
+            outf.write(aatree_as_str(atree) + '\n')
+            outf.write(unannotated_tree_as_str(atree) + '\n')
+            print 'Refining...'
             for cve in cves:
                 refine(atree, cve)
+            print 'Done'
             consolidate_enriched_tree(atree)
-            outf.write(aatree_as_str(atree)) 
+            outf.write(aatree_as_str(atree) + '\n')
+            outf.write(unannotated_tree_as_str(atree) + '\n\n')
+        else:
+            print 'Could not parse a valid AAT from line "' + ln.strip() + '"'  
      
     outf.close()
     
