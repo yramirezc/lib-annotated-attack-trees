@@ -1,6 +1,6 @@
 # lib-annotated-attack-trees
 
-Scripts and resources for creating a library of annotated attack trees and using it to refine 
+Scripts and resources for creating a library of annotated attack trees and using it to semi-automatically augment 
 an annotated attack tree. 
 
 Dependencies: PySWIP, see https://github.com/yuce/pyswip .
